@@ -39,12 +39,20 @@
           render: function() {
             
             return (
-              <div className="Event">
-                <h2 className="Eventuser">
+              <tr className="Event">
+                <td className="EventUser">
                   {this.props.user}
-                </h2>
-                  <span dangerouslySetInnerHTML={this.rawMarkup()} />
-              </div>
+                </td>
+                  <td className="EventType">
+                  {this.props.type}
+                  </td>
+                  <td className="EventNotes">
+                  {this.props.notes}
+                  </td>
+                  <td>
+                  <DeleteButton callback={this.props.callback} obj={this.props.obj}/>
+                  </td>
+                </tr>
             );
           }
         });    
@@ -53,21 +61,23 @@
                 var onEventDelete = this.props.onEventDelete
                 var EventNodes = this.props.data.map(function(event) {
                   return (
-                    <div className="Item">
-                    <Event user={event.user} key={event.id}>
-                      {event.event_type}{event.notes}
+                    <Event user={event.user} key={event.id} type={event.event_type} notes={event.notes} callback={onEventDelete} obj={event.id}>
                     </Event>
-                  <div className="actions">
-                  <DeleteButton callback={onEventDelete} obj={event.id}/>
-                  </div>
-                  </div>
 
                   );
                 });
                 return (
-                  <div className="EventList">
+                  <table class="table table-striped">
+                  <th>
+                  <td>User</td>
+                  <td>Event Type</td>
+                  <td>Notes</td>
+
+                  </th>
+                  <tbody>
                     {EventNodes}
-                  </div>
+                    </tbody>
+                  </table>
                 );          
               }
         });
