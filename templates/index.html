@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Seguimiento</title>
+    <!-- Not present in the tutorial. Just for basic styling. -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='base.css') }}" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react/0.14.7/react.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react/0.14.7/react-dom.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-core/5.6.15/browser.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/2.2.0/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/0.3.5/marked.min.js"></script>
+  </head>
+  <body>
+    <div id="content"></div>
+    <script type="text/babel">
+        var EditButton = React.createClass({
+            handleClick: function(){
+              this.props.callback()  
+            },
+            render: function() {
+                return(<a href="#" onClick={this.handleClick}>Editar </a>)
+            }
+        })
+        var DeleteButton = React.createClass({
+            handleClick: function(){
+              this.props.callback(this.props.obj)  
+            },
+            render: function() {
+                return(<a href="#" onClick={this.handleClick}>Borrar </a>)
+            }
+        })
+
+        var Event = React.createClass({
+          rawMarkup: function() {
+            var rawMarkup = marked(this.props.children.toString(), {sanitize: true});
+            return { __html: rawMarkup };
+          }, 
+          render: function() {
+            
+            return (
+              <div className="Event">
+                <h2 className="Eventuser">
+                  {this.props.user}
+                </h2>
+                  <span dangerouslySetInnerHTML={this.rawMarkup()} />
+              </div>
+            );
+          }
+        });    
+        var EventList = React.createClass({
+          render: function() {
+                var onEventDelete = this.props.onEventDelete
+                var EventNodes = this.props.data.map(function(event) {
+                  return (
+                    <div className="Item">
+                    <Event user={event.user} key={event.id}>
+                      {event.event_type}{event.notes}
+                    </Event>
+                  <div className="actions">
+                  <DeleteButton callback={onEventDelete} obj={event.id}/>
+                  </div>
+                  </div>
+
+                  );
+                });
+                return (
+                  <div className="EventList">
+                    {EventNodes}
+                  </div>
+                );          
+              }
+        });
+
+        var EventForm = React.createClass({
+          getInitialState: function() {
+              
+              var options = this.props.event_types.map(function(elem){
+                    return (<option  key={elem.id} value={elem.id}>{elem.name}</option>);
+                  });
+              return {user: '', notes: '', event_type:'', event_type_options: options};
+            },
+            handleEventTypeChange: function(e) {
+              this.setState({event_type: e.target.value});
+            },
+
+            handleUserChange: function(e) {
+              this.setState({user: e.target.value});
+            },
+            handleNotesChange: function(e) {
+              this.setState({notes: e.target.value});
+            },          
+            handleSubmit: function(e) {
+              e.preventDefault();
+              var user = this.state.user.trim();
+              var notes = this.state.notes.trim();
+              var event_type = this.state.event_type
+
+              if (!notes || !user || !event_type) {
+                return;
+              }
+              
+              this.props.onEventSubmit({user: user, notes: notes, event_type:event_type});
+              this.setState({user: '', notes: '', event_type:''});
+            },            
+          render: function() {
+
+            return (
+                <form className="eventForm" onSubmit={this.handleSubmit}>
+                  <input type="text" placeholder="Your name"  value={this.state.user}
+                          onChange={this.handleUserChange}/>
+                  <input type="text" placeholder="Say something..."   value={this.state.notes}
+                          onChange={this.handleNotesChange}/>
+                  <select placeholder="Select event type...." value={this.state.event_type} onChange={this.handleEventTypeChange}>
+                      {this.state.event_type_options}
+                  </select>
+                  <input type="submit" value="Post" />
+                </form>
+            );
+          }
+        });    
+        var EventBox = React.createClass({
+         getInitialState: function() {
+            return {data: []};
+          }, 
+        
+        loadEventsFromServer: function() {
+          $.ajax({
+            url: this.props.url,
+            dataType: 'json',
+            cache: false,
+            success: function(data) {
+              this.setState({data: data.results});
+            }.bind(this),
+            error: function(xhr, status, err) {
+              console.error(this.props.url, status, err.toString());
+              }.bind(this)
+            });
+          },      
+          handleEventSubmit: function(event) {
+                  var events = this.state.data;
+                  // Optimistically set an id on the new Event. It will be replaced by an
+                  // id generated by the server. In a production application you would likely
+                  // not use Date.now() for this and would have a more robust system in place.
+                  event.id = Date.now();
+                  var newEvents = events.concat([event]);
+                  this.setState({data: newEvents});            
+                  $.ajax({
+                    url: this.props.url,
+                    dataType: 'json',
+                    type: 'POST',
+                    data: event,
+                    success: function(data) {
+                      this.setState({data: data});
+                    }.bind(this),
+                    error: function(xhr, status, err) {
+                       this.setState({data: events});
+                      console.error(this.props.url, status, err.toString());
+                    }.bind(this)
+                  });
+          },                       
+          handleEventDelete: function(id) {
+                  var events = this.state.data;
+                  var newEvents = this.state.data.filter(function(el){ return el.id != id; });
+                  this.setState({data: newEvents});
+                  $.ajax({
+                    url: this.props.deleteUrl+"/" + id,
+                    dataType: 'json',
+                    type: 'POST',
+                    success: function(data) {
+                      this.setState({data: data});
+                    }.bind(this),
+                    error: function(xhr, status, err) {
+                       this.setState({data: events});
+                      console.error(this.props.deleteUrl, status, err.toString());
+                    }.bind(this)
+                  });
+          },          
+          render: function() {
+            return (
+              <div className="EventBox">
+                      <h1>Seguimiento</h1>
+                      <EventForm onEventSubmit={this.handleEventSubmit} event_types={this.props.event_types}/>
+                      <EventList data={this.state.data} event_types={this.props.event_types} onEventDelete={this.handleEventDelete}/>
+              </div>
+            );
+          },
+        componentDidMount: function() {
+          this.loadEventsFromServer();
+          setInterval(this.loadEventsFromServer, this.props.pollInterval);
+        },          
+    });
+
+    var event_types_loaded =  {{event_types|safe}}
+        ReactDOM.render(
+          <EventBox url="/api/events" deleteUrl="/api/events/delete" pollInterval={2000} event_types={event_types_loaded} />,
+          document.getElementById('content')
+        );    
+      </script>
+  </body>
+</html>

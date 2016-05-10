@@ -5,28 +5,38 @@
         "author": "Pete Hunt"
     },
     {
-        "text": "React is *great*!",
-        "id": 1420070400000,
-        "author": "Paul O\u2019Shannessy"
-    },
-    {
-        "text": "Holaaaa",
-        "id": 1457629364219,
+        "text": "llam\u00e9 a morcis",
+        "id": 1457654277341,
         "author": "Marcela"
     },
     {
-        "text": "anda?",
-        "id": 1457644849408,
-        "author": "chelis"
+        "text": "Llam\u00e9 otra vez",
+        "author": "Marcela",
+        "id": 1457654492271,
+        "event_type": "2"
     },
     {
-        "text": "si!",
-        "id": 1457644868389,
-        "author": "chelis"
+        "id": 1457656073376,
+        "text": "puteando",
+        "event_type": "3",
+        "author": "Alito"
     },
     {
-        "text": "loca",
-        "id": 1457645985434,
-        "author": "marche"
+        "id": 1462567666146,
+        "text": "me olvide",
+        "event_type": "2",
+        "author": "prueba"
+    },
+    {
+        "text": "marcela",
+        "author": "Marcela",
+        "event_type": "1",
+        "id": 1462808815183
+    },
+    {
+        "event_type": "1",
+        "text": "marcela",
+        "id": 1462808916130,
+        "author": "Marcela"
     }
 ]

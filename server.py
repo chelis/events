@@ -11,26 +11,46 @@
 import json
 import os
 import time
-from flask import Flask, Response, request
+from flask import Flask, Response, request, render_template
+from flask.ext.sqlalchemy import SQLAlchemy
+import simplejson as json
+from  flask.json import jsonify
 
-app = Flask(__name__, static_url_path='', static_folder='public')
-app.add_url_rule('/', 'root', lambda: app.send_static_file('index.html'))
+app = Flask(__name__)
+app.config.from_object('config.DevelopmentConfig')
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+db = SQLAlchemy(app)
 
-@app.route('/api/comments', methods=['GET', 'POST'])
+from models import EventType, Event
+
+@app.route('/', methods=['GET', 'POST'])
+def index():
+
+    return render_template('index.html', event_types=json.dumps(list(EventType.query.all())))
+
+@app.route('/api/events', methods=['GET', 'POST'])
 def comments_handler():
-
-    with open('comments.json', 'r') as file:
-        comments = json.loads(file.read())
 
     if request.method == 'POST':
         newComment = request.form.to_dict()
-        newComment['id'] = int(time.time() * 1000)
-        comments.append(newComment)
+        print newComment
+        del newComment['id']
+        db.session.add(Event(**newComment))
+        db.session.commit()
 
-        with open('comments.json', 'w') as file:
-            file.write(json.dumps(comments, indent=4, separators=(',', ': ')))
+    events = Event.query.all()
+    # return Response(json.dumps(comments), mimetype='application/json', headers={'Cache-Control': 'no-cache', 'Access-Control-Allow-Origin': '*'})
+    return jsonify(results=list(events))
 
-    return Response(json.dumps(comments), mimetype='application/json', headers={'Cache-Control': 'no-cache', 'Access-Control-Allow-Origin': '*'})
+@app.route('/api/events/delete/<int:comment_id>', methods=['POST'])
+def comments_delete_handler(comment_id):
+    if request.method == 'POST':
+        Event.query.filter_by(id=comment_id).delete()
+        db.session.commit()
+
+    events = Event.query.all()
+    return jsonify(results=list(events))
+
 
 if __name__ == '__main__':
     app.run(port=int(os.environ.get("PORT",3000)))
