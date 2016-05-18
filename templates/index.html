@@ -4,19 +4,20 @@
     <meta charset="utf-8">
     <title>Seguimiento</title>
     <!-- Not present in the tutorial. Just for basic styling. -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='base.css') }}" />
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/react/0.14.7/react.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/react/0.14.7/react-dom.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-core/5.6.15/browser.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/2.2.0/jquery.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/0.3.5/marked.min.js"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='bower_components/bootstrap/dist/css/bootstrap.min.css') }}" />
+    <script src="{{ url_for('static', filename='bower_components/react/react.js') }}"></script>
+    <script src="{{ url_for('static', filename='bower_components/react/react-dom.js') }}"></script>
+    <script src="{{ url_for('static', filename='bower_components/babel/browser.js') }}"></script>
+    <script src="{{ url_for('static', filename='bower_components/jquery/dist/jquery.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='bower_components/marked/marked.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='bower_components/PubSubJS/src/pubsub.js') }}"></script>
   </head>
   <body>
     <div id="content"></div>
     <script type="text/babel">
         var EditButton = React.createClass({
             handleClick: function(){
-              this.props.callback()  
+               PubSub.publish('edit', this.props.obj);
             },
             render: function() {
                 return(<a href="#" onClick={this.handleClick}>Editar </a>)
@@ -41,16 +42,17 @@
             return (
               <tr className="Event">
                 <td className="EventUser">
-                  {this.props.user}
+                  {this.props.event.user}
                 </td>
                   <td className="EventType">
-                  {this.props.type}
+                  {this.props.event.event_type_name}
                   </td>
                   <td className="EventNotes">
-                  {this.props.notes}
+                  {this.props.event.notes}
                   </td>
                   <td>
-                  <DeleteButton callback={this.props.callback} obj={this.props.obj}/>
+                  <DeleteButton callback={this.props.callback} obj={this.props.event.id}/>
+                  <EditButton obj={this.props.event}/>
                   </td>
                 </tr>
             );
@@ -59,23 +61,25 @@
         var EventList = React.createClass({
           render: function() {
                 var onEventDelete = this.props.onEventDelete
-                var EventNodes = this.props.data.map(function(event) {
+                if (this.props.data !=undefined){
+                var eventNodes = this.props.data.map(function(event) {
                   return (
-                    <Event user={event.user} key={event.id} type={event.event_type} notes={event.notes} callback={onEventDelete} obj={event.id}>
+                    <Event event={event}  key={event.id} callback={onEventDelete}>
                     </Event>
 
                   );
                 });
-                return (
-                  <table class="table table-striped">
-                  <th>
-                  <td>User</td>
-                  <td>Event Type</td>
-                  <td>Notes</td>
+              } else {var eventNodes = ''} 
 
-                  </th>
+                return (
+                  <table className="table table-striped">
+                  <thead>
+                  <th>User</th>
+                  <th>Event Type</th>
+                  <th>Notes</th>
+                  </thead>
                   <tbody>
-                    {EventNodes}
+                    {eventNodes}
                     </tbody>
                   </table>
                 );          
@@ -88,10 +92,33 @@
               var options = this.props.event_types.map(function(elem){
                     return (<option  key={elem.id} value={elem.id}>{elem.name}</option>);
                   });
-              return {user: '', notes: '', event_type:'', event_type_options: options};
+              options.unshift(<option  key='-1' value='-1'>---------------</option>)
+              return {user: '', notes: '', event_type:'', event_type_options: options, editing:null};
+            },
+
+            componentWillMount: function() {
+                // when React renders me, I subscribe to the topic 'products'
+                // .subscribe returns a unique token necessary to unsubscribe
+                this.pubsub_token = PubSub.subscribe('edit', function(e, elem) {
+                  // update my selection when there is a message
+                  this.toggleEditing(elem);
+                }.bind(this));
+              },
+
+              componentWillUnmount: function() {
+                // React removed me from the DOM, I have to unsubscribe from the pubsub using my token
+                PubSub.unsubscribe(this.pubsub_token);
+              },
+
+            toggleEditing: function(elem){
+                this.setState({editing: elem.id, user:elem.user, notes:elem.notes, event_type:elem.event_type}) 
+                this.render()
             },
             handleEventTypeChange: function(e) {
               this.setState({event_type: e.target.value});
+              var index = e.nativeEvent.target.selectedIndex;
+              var option_text = e.nativeEvent.target[index].text              
+              this.setState({event_type_name: option_text});
             },
 
             handleUserChange: function(e) {
@@ -105,16 +132,21 @@
               var user = this.state.user.trim();
               var notes = this.state.notes.trim();
               var event_type = this.state.event_type
+              var event_type_name = this.state.event_type_name
 
               if (!notes || !user || !event_type) {
                 return;
               }
               
-              this.props.onEventSubmit({user: user, notes: notes, event_type:event_type});
-              this.setState({user: '', notes: '', event_type:''});
+              if (this.state.editing == null) {
+                console.log(this.state.editing)
+                this.props.onEventSubmit({user: user, notes: notes, event_type:event_type, event_type_name:event_type_name});
+              } else {
+                this.props.onEventEdit({id: this.state.editing, user: user, notes: notes, event_type:event_type, event_type_name:event_type_name});
+              }
+              this.setState({user: '', notes: '', event_type:'', event_type_name:'-1', editing:null});
             },            
           render: function() {
-
             return (
                 <form className="eventForm" onSubmit={this.handleSubmit}>
                   <input type="text" placeholder="Your name"  value={this.state.user}
@@ -154,6 +186,7 @@
                   // not use Date.now() for this and would have a more robust system in place.
                   event.id = Date.now();
                   var newEvents = events.concat([event]);
+                  console.log(event)
                   this.setState({data: newEvents});            
                   $.ajax({
                     url: this.props.url,
@@ -186,12 +219,32 @@
                     }.bind(this)
                   });
           },          
+          handleEventEdit: function(obj) {
+                  var editEvent = obj.id
+                  var editEventId = editEvent;
+                  // this.setState({data: newEvents});
+                  $.ajax({
+                    url: this.props.editUrl+"/" + editEventId,
+                    dataType: 'json',
+                    type: 'PATCH', 
+                    data: obj,
+                    success: function(data) {
+                      this.setState({data: data});
+                    }.bind(this),
+                    error: function(xhr, status, err) {
+                       // this.setState({data: events});
+                      console.error(this.props.editUrl, status, err.toString());
+                    }.bind(this)
+                  });
+          },          
+
           render: function() {
             return (
               <div className="EventBox">
                       <h1>Seguimiento</h1>
-                      <EventForm onEventSubmit={this.handleEventSubmit} event_types={this.props.event_types}/>
-                      <EventList data={this.state.data} event_types={this.props.event_types} onEventDelete={this.handleEventDelete}/>
+                      <EventForm onEventSubmit={this.handleEventSubmit} event_types={this.props.event_types} onEventEdit={this.handleEventEdit}/>
+                      <br/>
+                      <EventList data={this.state.data} event_types={this.props.event_types} onEventDelete={this.handleEventDelete}  />
               </div>
             );
           },
@@ -203,7 +256,7 @@
 
     var event_types_loaded =  {{event_types|safe}}
         ReactDOM.render(
-          <EventBox url="/api/events" deleteUrl="/api/events/delete" pollInterval={2000} event_types={event_types_loaded} />,
+          <EventBox url="/api/events" deleteUrl="/api/events/delete" editUrl="api/events/edit" pollInterval={10000} event_types={event_types_loaded} />,
           document.getElementById('content')
         );    
       </script>

@@ -28,24 +28,46 @@ def index():
 
     return render_template('index.html', event_types=json.dumps(list(EventType.query.all())))
 
-@app.route('/api/events', methods=['GET', 'POST'])
+@app.route('/api/events', methods=['POST'])
 def comments_handler():
 
     if request.method == 'POST':
         newComment = request.form.to_dict()
-        print newComment
+        print 'create', newComment
         del newComment['id']
+        del newComment['event_type_name']
         db.session.add(Event(**newComment))
         db.session.commit()
 
-    events = Event.query.all()
+    events = Event.query.all()  #.paginate(page, 10, False)
     # return Response(json.dumps(comments), mimetype='application/json', headers={'Cache-Control': 'no-cache', 'Access-Control-Allow-Origin': '*'})
+    return jsonify(results=events)
+
+@app.route('/api/events', methods=['GET'])
+def event_list():
+
+    events = Event.query.all()
     return jsonify(results=list(events))
 
 @app.route('/api/events/delete/<int:comment_id>', methods=['POST'])
 def comments_delete_handler(comment_id):
     if request.method == 'POST':
         Event.query.filter_by(id=comment_id).delete()
+        db.session.commit()
+
+    events = Event.query.all()
+    return jsonify(results=list(events))
+
+
+@app.route('/api/events/edit/<int:comment_id>', methods=['PATCH'])
+def comments_update_handler(comment_id):
+    if request.method == 'PATCH':
+        newComment = request.form.to_dict()
+        if 'event_type_name' in newComment:
+            del newComment['event_type_name']
+        print 'update ', comment_id, newComment
+        event = Event.query.filter_by(id=comment_id).update(newComment)
+
         db.session.commit()
 
     events = Event.query.all()

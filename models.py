@@ -2,7 +2,7 @@
 # @Author: Marcela Campo
 # @Date:   2016-05-06 18:23:46
 # @Last Modified by:   Marcela Campo
-# @Last Modified time: 2016-05-09 17:20:09
+# @Last Modified time: 2016-05-12 20:32:48
 from server import db
 from sqlalchemy.dialects.postgresql import JSON
 import datetime
@@ -13,12 +13,14 @@ class EventType(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String())
+    events = db.relationship('Event',
+        backref=db.backref('event_type_name', lazy='joined'), lazy='dynamic')
 
     def __init__(self, name):
         self.name = name
 
     def __repr__(self):
-        return '<id {}>'.format(self.id)
+        return '<EventType id {}>'.format(self.id)
 
     def _asdict(self):
         result = OrderedDict()
@@ -31,10 +33,11 @@ class Event(db.Model):
     __tablename__ = 'event'
 
     id = db.Column(db.Integer, primary_key=True)
-    event_type = db.column(db.Integer, db.ForeignKey('EventType.id'))
+    event_type = db.Column(db.Integer, db.ForeignKey('event_type.id'))
     notes = db.Column(db.String())
     date = db.Column(db.DateTime())
     user = db.Column(db.String())
+
 
     def __init__(self, user, event_type, notes, date=None):
         self.user = user
@@ -44,7 +47,7 @@ class Event(db.Model):
         self.user = user
 
     def __repr__(self):
-        return '<id {}>'.format(self.id)
+        return '<Event id {}  user {} event_type  {} date {}>'.format(self.id, self.user, str(self.event_type_name) if self.event_type else '', self.date or '')
 
     def _asdict(self):
         result = OrderedDict()
@@ -52,10 +55,11 @@ class Event(db.Model):
             value = getattr(self, key)
             if isinstance(value, datetime.datetime):
                     value = value.isoformat()
-            if isinstance(value, EventType):
-                    value = value._asdict()
 
             result[key] = value
+
+        if self.event_type:
+            result['event_type_name'] = self.event_type_name.name
         return result
 
 
