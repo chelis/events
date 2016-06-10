@@ -29,7 +29,9 @@ def index():
     return render_template('index.html', event_types=json.dumps(list(EventType.query.all())))
 
 @app.route('/api/events', methods=['POST'])
-def comments_handler():
+
+
+def comments_handler(page=1):
 
     if request.method == 'POST':
         newComment = request.form.to_dict()
@@ -39,15 +41,15 @@ def comments_handler():
         db.session.add(Event(**newComment))
         db.session.commit()
 
-    events = Event.query.all()  #.paginate(page, 10, False)
+    events = Event.query.paginate(page, 100, False)
     # return Response(json.dumps(comments), mimetype='application/json', headers={'Cache-Control': 'no-cache', 'Access-Control-Allow-Origin': '*'})
-    return jsonify(results=events)
+    return jsonify(results=events.items)
 
 @app.route('/api/events', methods=['GET'])
-def event_list():
+def event_list(page=1):
 
-    events = Event.query.all()
-    return jsonify(results=list(events))
+    events = Event.query.paginate(page,100,False)
+    return jsonify(results=list(events.items))
 
 @app.route('/api/events/delete/<int:comment_id>', methods=['POST'])
 def comments_delete_handler(comment_id):
