@@ -6,7 +6,7 @@
   "dependencies": {
     "bootstrap": "^3.3.6",
     "jquery": "^2.2.4",
-    "react": "^15.1.0",
+    "react": "^17.0.1",
     "react-dom": "^15.1.0"
   },
   "devDependencies": {
