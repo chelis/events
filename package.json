@@ -4,7 +4,7 @@
   "description": "Small example of React + Flask application.",
   "main": "server.py",
   "dependencies": {
-    "bootstrap": "^3.3.6",
+    "bootstrap": "^5.0.2",
     "jquery": "^2.2.4",
     "react": "^15.1.0",
     "react-dom": "^15.1.0"
